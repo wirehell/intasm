@@ -1,0 +1,46 @@
+use std::str::FromStr;
+
+use crate::lexer::LexicalError;
+use crate::lexer::Token;
+use crate::ast::{Statement, Directive, Program};
+
+grammar;
+
+ConstantName : String = <String> => <>.to_string();
+Num: i64 = <s:Number> => i64::from_str(&s).unwrap();
+
+pub DirectiveStmt : Directive = {
+    "#define" WS+ <c:ConstantName> WS+ <n:Num> => Directive::Define(c, n),
+    "#define" => Directive::Foo,
+    "#foo" => Directive::Foo,
+}
+
+pub Stmt : Statement = {
+    <d:DirectiveStmt> LineEnd+ => Statement::DirectiveStatement(d),
+}
+
+pub Stmts : Program = {
+    <s:Stmt+> => Program { statements: s}
+}
+
+
+extern {
+    type Location = usize;
+    type Error = LexicalError;
+
+    enum Token {
+        WS      => Token::WhiteSpace,
+        LineEnd => Token::LineEnd,
+        "#"     => Token::Hash,
+        Period  => Token::Period,
+        Comma   => Token::Comma,
+        Quote   => Token::Quote,
+        "["     => Token::LBracket,
+        "]"     => Token::RBracket,
+        "%"     => Token::Percent,
+        String  => Token::String(<String>),
+        Number  => Token::Number(<String>),
+        "#define"   => Token::Define,
+        "#foo"      => Token::Foo
+    }
+}
