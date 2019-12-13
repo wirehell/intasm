@@ -1,17 +1,19 @@
 
 
-#define $count  100
-#define $comp_res 101
-#define $size 16
+#def    count  100
+#def    comp_res 101
+#def    size 16
 #foo
 
-.loop   sp 1
-        out [%sp-1]                       ; comment
-        add [$count] 1 pos($count)        ; comment
-        eq [$tmp] $size [$comp]
-        jif [$comp] &loop
+
+.loop   sp  1
+        out %[1]                      ; comment
+        add [count], 1, [count]       ; comment
+        eq [tmp], size, [comp]
+        jif [comp], loop
         halt
 
+        add 3 - 3 - 3 - 3 - 3
 .table  dw  1234,1235,4,127,88
 .msg    dw  "hello world", 0
 
