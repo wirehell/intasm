@@ -1,6 +1,6 @@
 use std::str::{CharIndices, FromStr};
 use std::iter::Peekable;
-use crate::lexer::LexicalError::{UnexpectedEof, UnknownDirective, UnexpectedCharacter};
+use crate::lexer::LexicalError::{UnexpectedEof, UnknownDirective, UnexpectedCharacter, InvalidString};
 use std::ops::Deref;
 use std::borrow::Borrow;
 use crate::ast::Word;
@@ -34,7 +34,7 @@ fn string_to_token(s :String) -> Token {
         "eq"        => Token::Eq,
         "halt"      => Token::Halt,
         "spa"       => Token::Spa,
-        "dw"        => Token::DW,
+        "dw"        => Token::Dw,
         "dup"       => Token::Dup,
         alphanumeric => {
             match Word::from_str(&alphanumeric) {
@@ -92,6 +92,27 @@ impl<'input> Iterator for Lexer<'input> {
                 Some((i, '*')) => {
                     return Some(Ok((i, Token::Asterix, i+1)));
                 },
+                Some((i, '\"')) => {
+                    let mut s = String::with_capacity(64);
+                    loop {
+                        match self.chars.next() {
+                            Some((_, '\"')) => {
+                                break;
+                            },
+                            Some((i, c)) if c.is_control() => {
+                                return Some(Err(InvalidString));
+                            },
+                            Some((_, c)) => {
+                                s.push(c);
+                            },
+                            None => {
+                                return Some(Err(InvalidString));
+                            }
+                        }
+                    }
+                    let next = i + s.len() + 1;
+                    return Some(Ok((i, Token::QuotedString(s), next)));
+                },
                 Some((i, '\n')) | Some((i, '\r')) => {
                     return Some(Ok((i, Token::LineEnd, i+1)));
                 },
@@ -148,7 +169,6 @@ pub enum Token {
     Hash,
     Period,
     Comma,
-    Quote,
     Plus,
     Minus,
     Asterix,
@@ -160,6 +180,7 @@ pub enum Token {
     Def,
     Foo,
     EOF,
+    QuotedString(String),
     StringLiteral(String),
     NumberLiteral(Word),
     Add,
@@ -172,7 +193,7 @@ pub enum Token {
     Eq,
     Halt,
     Spa,
-    DW,
+    Dw,
     Dup,
 }
 
@@ -180,5 +201,6 @@ pub enum Token {
 pub enum LexicalError {
     UnknownDirective(String),
     UnexpectedCharacter,
+    InvalidString,
     UnexpectedEof,
 }

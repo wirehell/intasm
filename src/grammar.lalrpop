@@ -3,9 +3,15 @@ use std::str::FromStr;
 use crate::lexer::LexicalError;
 use crate::lexer::Token;
 use crate::ast::{Statement, Directive, Program, Instruction, Word, Expression, Constant, ReadParameter,
-WriteParameter };
+WriteParameter, Declaration, DataValue };
 
 grammar;
+
+pub Stmt : Statement = {
+    <d:DirectiveStmt>   LineEnd+                            => Statement::DirectiveStatement(d),
+    <l:LabelDecl?>      <i:InstructionStmt> <le:LineEnd+>   => Statement::InstructionStatement(l, i),
+    <l:LabelDecl?>      <d:DeclarationStmt> <le:LineEnd+>   => Statement::DeclarationStatement(l, d),
+}
 
 pub DirectiveStmt : Directive = {
     "#" "def" <s:String> <n:Expr>   => Directive::Def(s, n),
@@ -47,20 +53,38 @@ pub WriteParameterExpr : WriteParameter = {
     "%" "[" <v:Expr> "]"    => WriteParameter::WriteRel(v),
 }
 
+pub DataDef : DataValue = {
+    <s:QuotedString>    => DataValue::DataString(s),
+    <e:Expr>            => DataValue::DataExpression(e),
+}
+
+Comma<T>: Vec<T> = {
+    <v:(<T> ",")*> <e:T?> => match e {
+        None => v,
+        Some(e) => {
+            let mut v = v;
+            v.push(e);
+            v
+        }
+    }
+};
+
 pub InstructionStmt : Instruction = {
     "halt"                          => Instruction::Halt,
-    "spa" <v:ValueExpr>             => Instruction::Spa {val: v},
+    "spa" <v:Expr>                  => Instruction::Spa {val: v},
     "in"  <v:WriteParameterExpr>    => Instruction::In {dst: v},
     "out" <v:ReadParameterExpr>     => Instruction::Out {src: v},
     "add" <op1:ReadParameterExpr> "," <op2:ReadParameterExpr> "," <dst:WriteParameterExpr> => Instruction::Add {op1, op2, dst },
     "mul" <op1:ReadParameterExpr> "," <op2:ReadParameterExpr> "," <dst:WriteParameterExpr> => Instruction::Mul {op1, op2, dst },
     "eq"  <op1:ReadParameterExpr> "," <op2:ReadParameterExpr> "," <dst:WriteParameterExpr> => Instruction::Eq {op1, op2, dst },
     "lt"  <op1:ReadParameterExpr> "," <op2:ReadParameterExpr> "," <dst:WriteParameterExpr> => Instruction::Lt {op1, op2, dst },
+    "jit" <cond:ReadParameterExpr> "," <target:Expr> => Instruction::Jit { cond, target },
+    "jif" <cond:ReadParameterExpr> "," <target:Expr> => Instruction::Jif { cond, target },
 }
 
-pub Stmt : Statement = {
-    <d:DirectiveStmt>   LineEnd+                       => Statement::DirectiveStatement(d),
-    <l:LabelDecl?>  <i:InstructionStmt> <le:LineEnd+>   => Statement::InstructionStatement(l, i),
+pub DeclarationStmt : Declaration = {
+    "dw"  <l:Comma<DataDef>>              => Declaration::Dw(l),
+    "dup" <count:Expr> "," <value:Expr>   => Declaration::Dup(count, value),
 }
 
 pub Stmts : Program = {
@@ -76,7 +100,6 @@ extern {
         "#"     => Token::Hash,
         "."     => Token::Period,
         ","     => Token::Comma,
-        Quote   => Token::Quote,
         "["     => Token::LBracket,
         "]"     => Token::RBracket,
         "("     => Token::LParen,
@@ -85,6 +108,7 @@ extern {
         "+"     => Token::Plus,
         "-"     => Token::Minus,
         "%"     => Token::Percent,
+        QuotedString => Token::QuotedString(<String>),
         String  => Token::StringLiteral(<String>),
         Number  => Token::NumberLiteral(<Word>),
         // Directives
@@ -101,5 +125,8 @@ extern {
         "eq"    => Token::Eq,
         "halt"  => Token::Halt,
         "spa"   => Token::Spa,
+        // Declarations
+        "dw"    => Token::Dw,
+        "dup"   => Token::Dup,
     }
 }
