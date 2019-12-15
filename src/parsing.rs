@@ -78,18 +78,18 @@ mod test {
             Some(String::from("l1")),
             Jif {
                 cond: ReadPos(Number(1)),
-                target: Constant(String::from("l2")),
+                target: ReadImm(Constant(String::from("l2"))),
             }));
     }
     #[test]
     fn test_parse_jit() {
-        let input = ".l1     jit [1], l2 \n";
+        let input = ".l1     jit [1], [l2] \n";
         let stmt = parse_statement(input).unwrap();
         assert_eq!(stmt, InstructionStatement(
             Some(String::from("l1")),
             Jit {
                 cond: ReadPos(Number(1)),
-                target: Constant(String::from("l2")),
+                target: ReadPos(Constant(String::from("l2"))),
             }));
     }
     #[test]

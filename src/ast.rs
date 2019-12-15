@@ -42,9 +42,9 @@ pub enum Instruction {
     Eq { op1: ReadParameter, op2: ReadParameter, dst: WriteParameter },
     Lt { op1: ReadParameter, op2: ReadParameter, dst: WriteParameter },
     Halt,
-    Spa { val: Expression, },
-    Jit { cond: ReadParameter, target: Expression },
-    Jif { cond: ReadParameter, target: Expression },
+    Spa { val: ReadParameter, },
+    Jit { cond: ReadParameter, target: ReadParameter },
+    Jif { cond: ReadParameter, target: ReadParameter },
 }
 
 

@@ -71,15 +71,15 @@ Comma<T>: Vec<T> = {
 
 pub InstructionStmt : Instruction = {
     "halt"                          => Instruction::Halt,
-    "spa" <v:Expr>                  => Instruction::Spa {val: v},
+    "spa" <v:ReadParameterExpr>     => Instruction::Spa {val: v},
     "in"  <v:WriteParameterExpr>    => Instruction::In {dst: v},
     "out" <v:ReadParameterExpr>     => Instruction::Out {src: v},
     "add" <op1:ReadParameterExpr> "," <op2:ReadParameterExpr> "," <dst:WriteParameterExpr> => Instruction::Add {op1, op2, dst },
     "mul" <op1:ReadParameterExpr> "," <op2:ReadParameterExpr> "," <dst:WriteParameterExpr> => Instruction::Mul {op1, op2, dst },
     "eq"  <op1:ReadParameterExpr> "," <op2:ReadParameterExpr> "," <dst:WriteParameterExpr> => Instruction::Eq {op1, op2, dst },
     "lt"  <op1:ReadParameterExpr> "," <op2:ReadParameterExpr> "," <dst:WriteParameterExpr> => Instruction::Lt {op1, op2, dst },
-    "jit" <cond:ReadParameterExpr> "," <target:Expr> => Instruction::Jit { cond, target },
-    "jif" <cond:ReadParameterExpr> "," <target:Expr> => Instruction::Jif { cond, target },
+    "jit" <cond:ReadParameterExpr> "," <target:ReadParameterExpr> => Instruction::Jit { cond, target },
+    "jif" <cond:ReadParameterExpr> "," <target:ReadParameterExpr> => Instruction::Jif { cond, target },
 }
 
 pub DeclarationStmt : Declaration = {

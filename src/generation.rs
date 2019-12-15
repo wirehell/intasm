@@ -9,11 +9,10 @@ pub fn assemble(program :&Program) -> Vec<Word> {
     resolve_constants(&mut env, &program);
 
     // First pass to determine labels
-    update_labels(&mut env, &program);
-
-
+    let size = update_labels(&mut env, &program);
     let output = generate_machine_code(&env, &program);
 
+    assert_eq!(size, output.len() as i64);
     return output;
 }
 
@@ -63,7 +62,7 @@ impl Env {
 }
 
 
-fn update_labels(env :&mut Env, program: &Program) {
+fn update_labels(env :&mut Env, program: &Program) -> Word {
     let mut current_address :Word = 0;
     for statement in &program.statements {
         match statement {
@@ -89,7 +88,7 @@ fn update_labels(env :&mut Env, program: &Program) {
             },
         }
     }
-
+    return current_address;
 }
 
 
@@ -116,7 +115,12 @@ impl Expression {
     fn evaluate(&self, env: &Env) -> Word {
         return match self {
             Expression::Number(n) => *n,
-            Expression::Constant(c) => *env.symbols.get(c).unwrap(),
+            Expression::Constant(c) => {
+                match env.symbols.get(c) {
+                    Some(value) => *value,
+                    None => panic!("Unknown symbol: {}", c),
+                }
+            }
             Expression::Plus(a, b) =>
                 a.evaluate(&env) + b.evaluate(&env),
             Expression::Multiplication(a, b) =>
@@ -164,21 +168,38 @@ impl Instruction {
                 let p_mode = op1.get_mode(0) + op2.get_mode(1) + dst.get_mode(2);
                 vec![2 + p_mode, op1.get_value(env), op2.get_value(env), dst.get_value(env)]
             },
+            Instruction::In { dst } => {
+                let p_mode = dst.get_mode(0);
+                vec![3 + p_mode, dst.get_value(env)]
+            },
+            Instruction::Out { src } => {
+                let p_mode = src.get_mode(0);
+                vec![4 + p_mode, src.get_value(env)]
+            },
+            Instruction::Jit { cond, target } => {
+                let p_mode = cond.get_mode(0) + target.get_mode(1);
+                vec![5 + p_mode, cond.get_value(env), target.get_value(env)]
+            },
+            Instruction::Jif { cond, target } => {
+                let p_mode = cond.get_mode(0) + target.get_mode(1);
+                vec![6 + p_mode, cond.get_value(env), target.get_value(env)]
+            },
+            Instruction::Lt { op1, op2, dst } => {
+                let p_mode = op1.get_mode(0) + op2.get_mode(1) + dst.get_mode(2);
+                vec![7 + p_mode, op1.get_value(env), op2.get_value(env), dst.get_value(env)]
+            },
+            Instruction::Eq { op1, op2, dst } => {
+                let p_mode = op1.get_mode(0) + op2.get_mode(1) + dst.get_mode(2);
+                vec![8 + p_mode, op1.get_value(env), op2.get_value(env), dst.get_value(env)]
+            },
+            Instruction::Spa { val } => {
+                let p_mode = val.get_mode(0);
+                vec![9 + p_mode, val.get_value(env)]
+            },
             Instruction::Halt => {
                 vec![99]
-            }
-            _ => vec![],
-            /*
-            Instruction::Mul { op1, op2, dst } => {},
-            Instruction::In { .. } => {},
-            Instruction::Out { .. } => {},
-            Instruction::Eq { .. } => {},
-            Instruction::Lt { .. } => {},
-            Instruction::Halt => {},
-            Instruction::Spa { .. } => {},
-            Instruction::Jit { .. } => {},
-            Instruction::Jif { .. } => {},
-            */
+            },
+            _ => unreachable!(),
         };
     }
 }
@@ -242,7 +263,18 @@ impl Declaration {
     }
 
     fn encode(&self, env: &Env) -> Vec<Word> {
-        return vec![]
+        match self {
+            Declaration::Dw(v) => {
+                let mut res = vec![];
+                for value in v {
+                    res.extend(value.encode(env));
+                }
+                return res;
+            },
+            Declaration::Dup(c, v) => {
+                return vec![v.evaluate(env) ;c.evaluate(env) as usize]
+            },
+        }
     }
 
 }
@@ -253,7 +285,18 @@ impl DataValue {
             DataValue::DataExpression(_) => 1,
             DataValue::DataString(s) => s.len() as Word,
         }
+    }
 
+    fn encode(&self, env: &Env) -> Vec<Word> {
+        match self {
+            DataValue::DataExpression(e) => {
+                return vec![e.evaluate(env)];
+            },
+            DataValue::DataString(s) => {
+                let res:Vec<Word>= s.chars().map(|x| x as Word).collect();
+                return res;
+            },
+        }
     }
 }
 
